@@ -1,0 +1,187 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <conio.h>
+#include <algorithm>
+#include <cstdlib>
+#include <string>
+#include <climits>          ///INT_MAX
+#include <cstdlib>          ///EXIT_FAILURE
+
+using namespace std;
+
+
+/************************************************************/
+/******* Permutacje bez powtorzen - PRZEGLAD ZUPELNY ********/
+/************************************************************/
+
+vector<vector<int> > PermutacjeBezPowtorzen(vector<int> tmp) {
+	sort(tmp.begin(), tmp.end());
+	vector<vector<int> > t;
+	if (tmp.empty()) {
+		return t;
+	}
+	do {
+		t.push_back(tmp);
+	} while (next_permutation(tmp.begin(), tmp.end()));
+	return t;
+}
+
+
+int main()
+{
+	ifstream file;          //WCZYTYWANIE PLIKU
+	vector<double> w1;      //MASZYNA PIERWSZA
+	vector<double> w2;      //MASZYNA DRUGA
+	file.open("data6.txt");
+
+	if (!file.is_open())
+	{
+		cout << "Nie udalo sie otworzyc pliku z danymi!\n";
+		exit(EXIT_FAILURE);
+	}
+
+	double value;
+	int count;
+	file >> count;
+
+
+/***********************************************************/
+/******* ODCZYT DANYCH Z PLIKU I PRZYPISANIE DO value ******/
+/***********************************************************/
+	for (int i = 0; i < count; ++i) {
+		file >> value;
+		w1.push_back(value);
+		file >> value;
+		w2.push_back(value);
+	}
+
+
+	vector<int> wynikowy;
+	int makeSpan = 0;
+
+	int j = 0;                  //zmienna wiersza z pliku
+	double min = INT_MAX;       //zmienna wartosci minimalnej
+	int index = 0;              //indeks maszyny ktora posiada najmniejszy czas wykonania
+	bool czy_maszyna_1 = true;  //sprawdzanie czy w 1 jest najkrotszy czas
+	bool czy_maszyna_2 = true;  //sprawdzanie czy w 2 jest najkrotszy czas
+	int kolejnosc = 0;          //zmienna do zewnetrznej petli (bez niej nie wyswietli sie najlepsza kolejnosc dzialania maszyn)
+
+
+	for (int i = 0; i < w1.size(); ++i)
+		wynikowy.push_back(i);
+
+
+	int ilePermutacji = 0;
+
+	vector<vector<int> > permutacje = PermutacjeBezPowtorzen(wynikowy);
+
+	for (vector<vector<int> >::size_type i = 0; i < permutacje.size(); i++)
+	{
+	    /********** WYSWIETLANIE PERMUTACJI ********/
+		/*for (vector<int>::size_type j = 0; j < permutacje[i].size(); j++)
+		{
+			cout << permutacje[i][j] << ' ';
+
+		}
+
+		cout << endl;
+*/
+		ilePermutacji++;
+	}
+	cout << "Ilosc permutacji dla wczytanych danych: " << ilePermutacji << endl;
+
+
+	int kiedy_mozemy = 0;           //wstepnie jako suma kolejnych zadan z maszyny 1 dla kolejnych permutacji
+	int makespan = 0;               //najkrotszy czas dla 1 maszyny
+	int makespan2 = 0;              //najkrotszy czas dla 2 maszyny
+	int nr_indeksu = 0;             //numery zadan dla obu maszyn
+	int najmniejszy_makespan = INT_MAX;         //minimany makespan czyli wartosc minimalna czasu wyonywania zadania
+
+
+    /********** CZAS WYKONYWANIA KAZDEJ KOLEJNEJ PERMUTACJI ********/
+    /** petla for sprawdza czasy wykonywania zadan przez maszyny  **/
+	for (int z = 0; z < ilePermutacji; z++)
+	{
+
+		for (int j = 0; j < w1.size(); ++j) {
+			int nr_indeksu = permutacje[z][j];          ///odczytujemy numer indeksu wczesniejszej tablicy permutacji
+			kiedy_mozemy += w1[nr_indeksu];     ///zwiekszamy czas wykonywania zadan na 1 maszynie
+
+			for (int i = 0; i < w1[nr_indeksu]; ++i)    ///czas dla maszyny pierszej przypisujemy zmiennej makespan
+				makespan++;
+
+			if (makespan2 < kiedy_mozemy)       ///porownujemy czas wykonania na 1 maszynie z wartoscia makespan2 ktora bedzie ostatecznym czasem
+			{
+				int roznica = kiedy_mozemy - makespan2;     ///wyiczamy roznice czasow
+				for (int i = 0; i < roznica; ++i)
+					makespan2++;
+			}
+
+			for (int j = 0; j < w2[nr_indeksu]; ++j)        ///zwiekszamy czas wykonywania na obu maszynach
+				makespan2++;
+		}
+
+		if (najmniejszy_makespan > makespan2)               /// porownujemy czasy wykonania wyliczone i przypisujemy wartosci koncowej
+			najmniejszy_makespan = makespan2;
+		makespan = 0;
+		makespan2 = 0;
+		kiedy_mozemy = 0;
+	}
+
+	cout << "\nWartosc Cmax : " << najmniejszy_makespan;
+	const int size = w1.size();             ///stala zmienna rozmiaru rowna wielkosci tablicy maszyny 1
+	double *tab = new double[size];         ///tablica wskaznikow na wyjsciu
+	int maxIndeks = w1.size() - 1;          ///maszyna druga - indeks dodawania na koniec
+	int minIndeks = 0;                      ///maszyna pierwsza - indeks dodawania na poczatek
+	vector<double>::iterator i;             ///iterator dla petli
+
+	/** petla while wykonuje sie do momentu gdy wyjscie ma taki sam rozmiar jak maszyna 1 i maszyna 2 **/
+	while (kolejnosc != w1.size()) {
+
+        /** petla for znajduje najmniejszy element w obu maszynach i zapisuje jego indeks w "index" **/
+		for (i = w1.begin(); i != w1.end(); ++i) {
+			if (w1[j] < min) {
+				min = w1[j];
+				index = j;
+				czy_maszyna_1 = true;
+				czy_maszyna_2 = false;
+			}
+			if (w2[j] < min) {
+				min = w2[j];
+				index = j;
+				czy_maszyna_1 = false;
+				czy_maszyna_2 = true;
+			}
+			j++;
+		}
+
+		/** przypisujemy INT_MAX w miejscu najmniejszego elementu i wiemy ze ten indeks juz wystapil. jest on juz zawarty w tablicy wyjsciowej **/
+		w1[index] = INT_MAX;
+		w2[index] = INT_MAX;
+
+		/** dla elementu z pierwszej maszyny dodajemy na poczatek tablicy wyjsciowej, a jesli z 2 to na koniec*/
+		if (czy_maszyna_2) {
+			tab[maxIndeks] = index;
+			maxIndeks--;
+		}
+		else {
+			tab[minIndeks] = index;
+			minIndeks++;
+		}
+
+		min = INT_MAX;          /** powtarzamy czynnosci - przypisanie min na INT_MAX i znajdujemy kolejne polozenia **/
+		j = 0;                  /** zerujemy "j"by mpoc przypisac ponownie do "index" **/
+		index = 0;              /** to samo z "index" **/
+
+	kolejnosc++;                /** zwiekszamy wartosc naszej zmiennej kolejnosc **/
+
+	}
+
+	cout << "\n\nKolejnosc zadan po wykonaniu algorytmu Johnsona:  ";
+	for (int i = 0; i < w1.size(); ++i)                 /** wyswietlamy kolejnosc zadan najardziej optymalna **/
+		cout << tab[i] << '\t';
+
+	_getch();
+
+}
