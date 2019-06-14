@@ -1,0 +1,107 @@
+from shrage import *
+from copy import deepcopy
+
+#wyznaczamy c na podstawie czasu dostarczenia zadania b
+def obtain_C(data, path):
+    jobs = OrderedDict((x, data[x]) for x in path)
+    qb = jobs[path[-1]][2]
+    for c in path[-2::-1]:
+        if jobs[c][2] < qb:
+            return c
+    return None
+
+#przypisujemy wartosci zmiennym rpq
+def variables(data, path):
+    jobs = OrderedDict((x, data[x]) for x in path)
+    rk = min(jobs[x][0] for x in path)
+    pk = sum(jobs[x][1] for x in path)
+    qk = min(jobs[x][2] for x in path)
+
+
+    return rk, qk, pk
+
+#modyfikujemy wartosc zadania krytycznego
+#rozwazanie nowych instancji problemu
+def CRIT(data, order, b):
+    jobs = OrderedDict((x, data[x]) for x in order)
+    crit = [order[0]]
+    done = sum(jobs[order[0]][:-1])
+    for i in order[1:order.index(b)+1]:
+        if jobs[i][0] > done:
+            crit.clear()
+            crit.append(i)
+            done = sum(jobs[i][:-1])
+        else:
+            crit.append(i)
+            done += jobs[i][1]
+    return crit
+
+#wyznaczamy cmaxa dla zadania b
+def CMAX(data, order):
+    Full_time = sum(data[order[0]][:-1])
+    Qk = [sum(data[order[0]][:-1]) + data[order[0]][2]]
+    for i in order[1:]:
+        if data[i][0] > Full_time:
+            Full_time = sum(data[i][:-1])
+            Qk.append(Full_time + data[i][2])
+        else:
+            Full_time += data[i][1]
+            Qk.append(Full_time + data[i][2])
+    return max(Qk)
+
+
+def do_Carlier(data):
+#u- wartosc funkcji celu
+#przyjmyjemy za u zwyklego schraga
+    jobs = deepcopy(data)
+    distribution, U, b = schrage(jobs)
+    try:
+        #ub- gorne oszacowanie wartosci funkcji celu
+        if U < Ub:
+            Ub = U
+            done = distribution
+    except UnboundLocalError:
+        Ub = U
+        done = distribution
+    #kolejny raz przypisujemy a,b i c
+    path = CRIT(jobs, distribution, b)
+    real_C = obtain_C(jobs, path)
+    #jesli c=b to skoncz
+    if real_C is None:
+        return done
+    idxc = path.index(real_C)
+#przypisywanie k kolejnych wartosci po c az do b
+    k = path[idxc+1:]
+#modyfikacja rpq dla zadan od c+1 do b
+    rk, qk, pk = variables(jobs, k)
+#modyfikacja wartosci zadania krytycznego
+    rpc = jobs[real_C][0]
+    jobs[real_C][0] = max(rpc, rk + pk)
+#wywolanie schraga z przerwaniami
+#lb- druga wartosc funkcji celu
+    lb = schrage_ptm(jobs)
+    lb = max(sum([rk, qk, pk]), sum(variables(jobs, path[idxc:])), lb)
+    #jesli to wywolujemy carliera
+    if lb < Ub:
+        return do_Carlier(jobs)
+    #przywracamy poprzednia wartosc rpc
+    jobs[real_C][0] = rpc
+#i modyfikujemy czas dorczarczania dla tego zadania
+#QPC- czas dostarczania zadania C dla kolejnosci pi
+    QPC = jobs[real_C][2]
+    jobs[real_C][2] = max(QPC, qk + pk)
+    lb = schrage_ptm(jobs)
+    lb = max(sum([rk, qk, pk]), sum(variables(jobs, path[idxc:])), lb)
+    if lb < Ub:
+        return do_Carlier(jobs)
+#odtwarzamy poprzednie qpc
+    jobs[real_C][2] = QPC
+    return done
+
+
+samples = file_reader("dane.txt")
+for i, sample in enumerate(samples):
+    if i == i:
+        last = do_Carlier(sample)
+        print(last)
+        print("Cmax:", CMAX(sample, last))
